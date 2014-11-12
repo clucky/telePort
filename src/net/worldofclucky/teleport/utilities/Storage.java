@@ -31,47 +31,65 @@ public class Storage {
 		saves = Raft.loadConfig(file);
 	}
 	
+	public static String findUUID(String player) {
+		for (String i : saves.getKeys(false)) {
+			if (saves.keyExists("player." + i + ".LastKnownName") && saves.getString("player." + i + ".LastKnownName").equalsIgnoreCase(player)) {
+				return i;
+			}
+		}
+		return null;
+	}
+	
+	public static void setLastKnownName(String uuid, String player) {
+		saves.set("player." + uuid + ".LastKnownName", player);
+	}
+	
+	public static Location getHome(String player, String name) {
+		String uuid = Storage.findUUID(player);
+		if (uuid == null) {
+			return null;
+		}
+		String world = saves.getString("player." + uuid + ".homes." + name + ".world");
+		double x = saves.getDouble("player." + uuid + ".homes." + name + ".x");
+		double y = saves.getDouble("player." + uuid + ".homes." + name + ".y");
+		double z = saves.getDouble("player." + uuid + ".homes." + name + ".z");
+		Location location = new Location(Raft.getWorld(world), x, y, z);
+		return location;
+	}
+	
 	public static Location getHome(Player player, String name) {
-		String world = "world";
-		double x = 0;
-		double y = 0;
-		double z = 0;
+		String uuid = player.getMojangId().toString();
+		String world = saves.getString("player." + uuid + ".homes." + name + ".world");
+		double x = saves.getDouble("player." + uuid + ".homes." + name + ".x");
+		double y = saves.getDouble("player." + uuid + ".homes." + name + ".y");
+		double z = saves.getDouble("player." + uuid + ".homes." + name + ".z");
 		Location location = new Location(Raft.getWorld(world), x, y, z);
 		return location;
 	}
 	
 	public static void setHomeToPlayer(Player player, String name) {
-		setHome(player.getMojangId(), name, player.getLocation());
+		setHome(player, name, player.getLocation());
 	}
 	
 	public static void setHome(Player player, String name, Location location) {
-		setHome(player.getMojangId(), name, location);
-	}
-	
-	public static void setHome(UUID player, String name, Location location) {
-		String uuid = player.toString();
-		saves.set(uuid + ".homes." + name + ".x", location.getX());
-		saves.set(uuid + ".homes." + name + ".y", location.getY());
-		saves.set(uuid + ".homes." + name + ".z", location.getZ());
-		saves.set(uuid + ".homes." + name + ".world", location.getWorld().getName());
+		String uuid = player.getMojangId().toString();
+		setLastKnownName(uuid, player.toString()); //Temporary solution to absence of PlayerLoginEvent
+		saves.set("player." + uuid + ".homes." + name + ".x", location.getX());
+		saves.set("player." + uuid + ".homes." + name + ".y", location.getY());
+		saves.set("player." + uuid + ".homes." + name + ".z", location.getZ());
+		saves.set("player." + uuid + ".homes." + name + ".world", location.getWorld().getName());
 	}
 	
 	public static StorageReturn setHome(String player, String name, Location location) {
-		String uuid = "";
-	playerSearch:
-		for (String i : saves.getKeys(false)) {
-			if (saves.keyExists(i + ".homes.LastKnownName") && saves.getString(i + ".homes.LastKnownName").equalsIgnoreCase(player)) {
-				uuid = i;
-				break playerSearch;
-			}
-		}
-		if (uuid.equalsIgnoreCase("")) {
+		String uuid = Storage.findUUID(player);
+		if (uuid == null) {
 			return StorageReturn.NOPLAYERFOUND;
 		}
-		saves.set(uuid + ".homes." + name + ".x", location.getX());
-		saves.set(uuid + ".homes." + name + ".y", location.getY());
-		saves.set(uuid + ".homes." + name + ".z", location.getZ());
-		saves.set(uuid + ".homes." + name + ".world", location.getWorld().getName());
+		setLastKnownName(uuid, player); //Temporary solution to absence of PlayerLoginEvent
+		saves.set("player." + uuid + ".homes." + name + ".x", location.getX());
+		saves.set("player." + uuid + ".homes." + name + ".y", location.getY());
+		saves.set("player." + uuid + ".homes." + name + ".z", location.getZ());
+		saves.set("player." + uuid + ".homes." + name + ".world", location.getWorld().getName());
 		return StorageReturn.NORMAL;
 	}
 	

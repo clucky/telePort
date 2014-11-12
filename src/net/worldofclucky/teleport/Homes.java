@@ -1,8 +1,11 @@
 package net.worldofclucky.teleport;
 
 import net.worldofclucky.teleport.utilities.Storage;
+import net.worldofclucky.teleport.utilities.StorageReturn;
 
 import org.raftpowered.ChatColor;
+import org.raftpowered.Location;
+import org.raftpowered.Raft;
 import org.raftpowered.RaftUtils;
 import org.raftpowered.api.Command;
 import org.raftpowered.api.CommandUtils;
@@ -24,18 +27,37 @@ public class Homes {
 		if (!sender.hasPermission("teleport.home", false)) throw CommandException.PERMISSION_DENIED;
 
 		switch (args.length) {
-			case 0: // /home
+			case 0:
 				if (!sender.hasPermission("teleport.home.self", false)) throw CommandException.PERMISSION_DENIED;
+				player.setLocation(Storage.getHome(player, "main"));
 				sender.sendMessage(ChatColor.GREEN + "Teleporting you to your default home.");
 				break;
 				
-			case 1: // /home <name>
+			case 1:
 				if (!sender.hasPermission("teleport.home.self", false)) throw CommandException.PERMISSION_DENIED;
+				player.setLocation(Storage.getHome(player, args[0]));
 				sender.sendMessage(ChatColor.GREEN + "Teleporting you to your home named " + args[0] + ".");
 				break;
 				
-			case 2:// /home <name> <player>
+			case 2:
 				if (!sender.hasPermission("teleport.home.other", true)) throw CommandException.PERMISSION_DENIED;
+//Temporary support for offline players. Awaiting PlayerName > UUID conversion support provided by Raft.
+				Location location;
+				if (Raft.getPlayerExact(args[1]) != null) {
+					location = Storage.getHome(Raft.getPlayerExact(args[1]), args[0]);
+				} else {
+					location = Storage.getHome(args[1], args[0]);
+					if (location == null) {
+						sender.sendMessage(StorageReturn.NOPLAYERFOUND.getReason());
+						break;
+					}
+					
+				}
+				player.setLocation(location);
+				
+//
+//				player.setLocation(Storage.getHome(Raft.getPlayerExact(args[1]).getMojangId(), args[0]));
+//
 				sender.sendMessage(ChatColor.GREEN + "Teleporting you to the home named " + args[0] + " owned by " + args[1] );
 				break;
 				
@@ -58,22 +80,26 @@ public class Homes {
 		if (!sender.hasPermission("teleport.sethome", false)) throw CommandException.PERMISSION_DENIED;
 		
 		switch (args.length) {
-			case 0: //Player sets their main home
+			case 0:
 				if (!sender.hasPermission("teleport.sethome.self", false)) throw CommandException.PERMISSION_DENIED;
 				Storage.setHomeToPlayer(player, "main");
 				sender.sendMessage(ChatColor.GREEN + "Main home set to current location.");
 				break;
 				
-			case 1: //Player sets their named home
+			case 1:
 				if (!sender.hasPermission("teleport.sethome.self", false)) throw CommandException.PERMISSION_DENIED;
 				Storage.setHomeToPlayer(player, args[0]);
 				sender.sendMessage(ChatColor.GREEN + "Home named " + args[0] + " set to current location.");
 				break;
 				
-			case 2: //Player sets another player's named home
+			case 2:
 				if (!sender.hasPermission("teleport.sethome.other", true)) throw CommandException.PERMISSION_DENIED;
-				Storage.setHome(args[1], args[0], player.getLocation());
-				sender.sendMessage(Storage.setHome(args[1], args[0], player.getLocation()).getReason());
+				StorageReturn returnValue = Storage.setHome(args[1], args[0], player.getLocation());
+				if (!returnValue.equals(StorageReturn.NORMAL)) {
+					sender.sendMessage(returnValue.getReason());
+					break;
+				}
+				sender.sendMessage(ChatColor.GREEN + "Home named " + args[0] + " for " + args[1] + " set to current location");
 				break;
 				
 			default:
